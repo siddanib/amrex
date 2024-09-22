@@ -5,6 +5,7 @@
 #ifdef AMREX_USE_MPI
 
 #include <AMReX_FabArray.H>
+#include <AMReX_ParticleContainer.H>
 
 #include <mpi.h>
 
@@ -36,6 +37,18 @@ public:
 
     template <typename FAB>
     void recv (FabArray<FAB>& mf, int icomp, int ncomp) const;
+
+    template <int NStructReal, int NStructInt, int NArrayReal, int NArrayInt>
+    void send
+    (ParticleContainer<NStructReal, NStructInt, NArrayReal, NArrayInt> const& pc,
+     int real_start_comp, int real_num_comp, int int_start_comp, int int_num_comp)
+    const;
+
+    template <int NStructReal, int NStructInt, int NArrayReal, int NArrayInt>
+    void recv
+    (ParticleContainer<NStructReal, NStructInt, NArrayReal, NArrayInt> & pc,
+     int real_start_comp, int real_num_comp, int int_start_comp, int int_num_comp)
+    const;
 
     [[nodiscard]] BoxArray const& boxArray () const;
 
@@ -185,6 +198,20 @@ void Copier::recv (FabArray<FAB>& mf, int icomp, int ncomp) const
     }
 }
 
+
+template <int NStructReal, int NStructInt, int NArrayReal, int NArrayInt>
+void send
+(ParticleContainer<NStructReal, NStructInt, NArrayReal, NArrayInt> const& pc,
+ int real_start_comp, int real_num_comp, int int_start_comp, int int_num_comp)
+const
+{
+    const auto N_snds = static_cast<int>(m_SndTags.size());
+
+    if (N_snds == 0) { return; }
+
+    // Prepare Buffer
+
+}
 
 }
 
