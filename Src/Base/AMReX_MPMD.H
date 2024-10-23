@@ -51,15 +51,17 @@ public:
     const;
 
     [[nodiscard]] BoxArray const& boxArray () const;
+    [[nodiscard]] BoxArray const& Other_boxArray () const;
 
     [[nodiscard]] DistributionMapping const& DistributionMap () const;
+    [[nodiscard]] DistributionMapping const& Other_DistributionMap () const;
 
 private:
     std::map<int,FabArrayBase::CopyComTagsContainer> m_SndTags;
     std::map<int,FabArrayBase::CopyComTagsContainer> m_RcvTags;
     bool m_is_thread_safe;
-    BoxArray m_ba;
-    DistributionMapping m_dm;
+    BoxArray m_ba, m_oba;
+    DistributionMapping m_dm, m_odm;
 };
 
 template <typename FAB>
@@ -198,20 +200,6 @@ void Copier::recv (FabArray<FAB>& mf, int icomp, int ncomp) const
     }
 }
 
-
-template <int NStructReal, int NStructInt, int NArrayReal, int NArrayInt>
-void send
-(ParticleContainer<NStructReal, NStructInt, NArrayReal, NArrayInt> const& pc,
- int real_start_comp, int real_num_comp, int int_start_comp, int int_num_comp)
-const
-{
-    const auto N_snds = static_cast<int>(m_SndTags.size());
-
-    if (N_snds == 0) { return; }
-
-    // Prepare Buffer
-
-}
 
 }
 

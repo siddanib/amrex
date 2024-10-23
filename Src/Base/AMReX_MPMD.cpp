@@ -227,19 +227,18 @@ Copier::Copier (BoxArray const& ba, DistributionMapping const& dm,
     }
     ParallelDescriptor::Bcast(oprocs.data(), oprocs.size());
 
-    BoxArray oba;
     if (!obv.empty()) {
-        oba.define(BoxList(std::move(obv)));
+        m_oba.define(BoxList(std::move(obv)));
     }
 
-    // At this point, ba and bv hold our boxes, and oba holds the other
+    // At this point, ba and bv hold our boxes, and m_oba holds the other
     // program's boxes. procs holds mpi ranks of our boxes, and oprocs holds
     // mpi ranks of the other program's boxes.  All mpi ranks are in
     // MPI_COMM_WORLD.
 
     // Build communication meta-data
     if (!send_ba){
-        AMREX_ALWAYS_ASSERT(ba.ixType() == oba.ixType());
+        AMREX_ALWAYS_ASSERT(ba.ixType() == m_oba.ixType());
         m_is_thread_safe = ba.ixType().cellCentered();
     }else{
         m_is_thread_safe = true;
@@ -250,7 +249,7 @@ Copier::Copier (BoxArray const& ba, DistributionMapping const& dm,
     for (int i = 0; i < this_nboxes; ++i) {
         if (procs[i] == myproc) {
             if (!send_ba){
-                oba.intersections(bv[i], isects);
+                m_oba.intersections(bv[i], isects);
             }
             else{
                 isects.resize(0);
@@ -265,6 +264,8 @@ Copier::Copier (BoxArray const& ba, DistributionMapping const& dm,
             }
         }
     }
+
+    m_odm.define(oprocs);
 
     if (!send_ba){
         for (auto& kv : m_SndTags) {
@@ -350,6 +351,8 @@ Copier::Copier (bool)
     // mpi ranks of the other program's boxes.  All mpi ranks are in
     // MPI_COMM_WORLD.
 
+    m_odm.define(oprocs);
+
     // Build communication meta-data
 
     for (int i = 0; i < this_nboxes; ++i) {
@@ -367,9 +370,19 @@ BoxArray const& Copier::boxArray () const
     return m_ba;
 }
 
+BoxArray const& Copier::Other_boxArray () const
+{
+    return m_oba;
+}
+
 DistributionMapping const& Copier::DistributionMap () const
 {
     return m_dm;
+}
+
+DistributionMapping const& Copier::Other_DistributionMap () const
+{
+    return m_odm;
 }
 
 }
