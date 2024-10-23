@@ -311,32 +311,33 @@ int main(int argc, char* argv[])
         amrex::Geometry geom(domain, &real_box);
         // Create an MPMD Copier
         auto copr = amrex::MPMD::Copier(ba,dm,false);
+	    // Will be sending information from this app
 
-	// Will be sending information from this app
+	    // Create new DistributionMap for this new BoxArray
+         amrex::DistributionMapping dm_1(copr.Other_boxArray());
+	    // Send the new DistributionMap information to other app
+	    auto copr_1 = amrex::MPMD::Copier(copr.Other_boxArray(),dm_1,true);
 
-	// Create new DistributionMap for this new BoxArray
-        amrex::DistributionMapping dm_1(copr.Other_boxArray());
-	// Send the new DistributionMap information to other app
-	auto copr_1 = amrex::MPMD::Copier(copr.Other_boxArray(),dm_1,true);
-
-	// Create ParticleContainer and populate with Data
+	    // Create ParticleContainer and populate with Data
         TestParticleContainer pc(geom, dm, ba);
-	// Initialize 
+	    // Initialize
         IntVect nppc(10);
         pc.InitParticles(nppc);
+        pc.Redistribute();
 
-	// Create a new ParticleContainer with the other_boxArray
+	    // Create a new ParticleContainer with the other_boxArray
         TestParticleContainer opc_1(geom, dm_1, copr.Other_boxArray());
-	// Copy to the new particle container
-	opc_1.copyParticles(pc,false);
-	// Change the DistributionMapping of opc_1
-	opc_1.SetParticleDistributionMap(0,copr.Other_DistributionMap());
-	// Change the MPI communicator
-	MPI_Comm global_comm = MPI_COMM_WORLD;
-	ParallelContext::push(global_comm);
-	// Call Redistribute to send data to other app?
-	opc_1.Redistribute();
-	ParallelContext::pop();
+	    // Copy to the new particle container
+	    opc_1.copyParticles(pc,false);
+        opc_1.Redistribute();
+	    // Change the DistributionMapping of opc_1
+	    opc_1.SetParticleDistributionMap(0,copr.Other_DistributionMap());
+	    // Change the MPI communicator
+	    MPI_Comm global_comm = MPI_COMM_WORLD;
+	    ParallelContext::push(global_comm);
+	    // Call Redistribute to send data to other app?
+	    opc_1.Redistribute();
+	    ParallelContext::pop();
     }
     amrex::Finalize();
 

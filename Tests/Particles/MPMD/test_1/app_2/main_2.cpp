@@ -312,18 +312,18 @@ int main(int argc, char* argv[])
         // Create an MPMD Copier
         auto copr = amrex::MPMD::Copier(ba,dm,false);
 
-	// Will be receiving information from the other app
-	auto copr_1 = amrex::MPMD::Copier(true);
-	// Create an empty ParticleContainer
+	    // Will be receiving information from the other app
+	    auto copr_1 = amrex::MPMD::Copier(true);
+	    // Create an empty ParticleContainer
         TestParticleContainer pc(geom, dm, ba);
-	// Change the DistributionMap
-	pc.SetParticleDistributionMap(0,copr_1.Other_DistributionMap());
-	// Change the MPI communicator
-	MPI_Comm global_comm = MPI_COMM_WORLD;
-	ParallelContext::push(global_comm);
-	// Call Redistribute to recv from the other app?
-	pc.Redistribute();
-	ParallelContext::pop();
+	    // Change the DistributionMap
+	    pc.SetParticleDistributionMap(0,copr_1.Other_DistributionMap());
+	    // Change the MPI communicator
+	    MPI_Comm global_comm = MPI_COMM_WORLD;
+	    ParallelContext::push(global_comm);
+	    // Call Redistribute to recv from the other app?
+	    pc.Redistribute();
+	    ParallelContext::pop();
     }
     amrex::Finalize();
 
