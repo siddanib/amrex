@@ -247,36 +247,56 @@ void mlebtensor_cross_terms (Box const& box, Array4<Real> const& Ax,
                 Real fxm_1 = fx(i,j,0,1);
                 if (apx(i,j,0) > Real(0.0) && apx(i,j,0) < Real(1.0)) {
                     int jj = j + (fcx(i,j,0,0) >= Real(0.0) ? 1 : -1);
-                    Real fracy = (ccm(i-1,jj,0) || ccm(i,jj,0)) ? std::abs(fcx(i,j,0,0)) : Real(0.0);
-                    fxm_0 = (Real(1.0)-fracy)*fxm_0 + fracy*fx(i,jj,0,0);
-                    fxm_1 = (Real(1.0)-fracy)*fxm_1 + fracy*fx(i,jj,0,1);
+                    bool smooth_eta = !flag(i,jj,0).isSingleValued()
+                        || !mlebtensor_strong_coeff_jump(etab(i,j,0), etab(i,jj,0),
+                                                         kapb(i,j,0), kapb(i,jj,0));
+                    if (smooth_eta) {
+                        Real fracy = (ccm(i-1,jj,0) || ccm(i,jj,0)) ? std::abs(fcx(i,j,0,0)) : Real(0.0);
+                        fxm_0 = (Real(1.0)-fracy)*fxm_0 + fracy*fx(i,jj,0,0);
+                        fxm_1 = (Real(1.0)-fracy)*fxm_1 + fracy*fx(i,jj,0,1);
+                    }
                 }
 
                 Real fxp_0 = fx(i+1,j,0,0);
                 Real fxp_1 = fx(i+1,j,0,1);
                 if (apx(i+1,j,0) > Real(0.0) && apx(i+1,j,0) < Real(1.0)) {
                     int jj = j + (fcx(i+1,j,0,0) >= Real(0.0) ? 1 : -1);
-                    Real fracy = (ccm(i,jj,0) || ccm(i+1,jj,0)) ? std::abs(fcx(i+1,j,0,0)) : Real(0.0);
-                    fxp_0 = (Real(1.0)-fracy)*fxp_0 + fracy*fx(i+1,jj,0,0);
-                    fxp_1 = (Real(1.0)-fracy)*fxp_1 + fracy*fx(i+1,jj,0,1);
+                    bool smooth_eta = !flag(i+1,jj,0).isSingleValued()
+                        || !mlebtensor_strong_coeff_jump(etab(i+1,j,0), etab(i+1,jj,0),
+                                                         kapb(i+1,j,0), kapb(i+1,jj,0));
+                    if (smooth_eta) {
+                        Real fracy = (ccm(i,jj,0) || ccm(i+1,jj,0)) ? std::abs(fcx(i+1,j,0,0)) : Real(0.0);
+                        fxp_0 = (Real(1.0)-fracy)*fxp_0 + fracy*fx(i+1,jj,0,0);
+                        fxp_1 = (Real(1.0)-fracy)*fxp_1 + fracy*fx(i+1,jj,0,1);
+                    }
                 }
 
                 Real fym_0 = fy(i,j,0,0);
                 Real fym_1 = fy(i,j,0,1);
                 if (apy(i,j,0) > Real(0.0) && apy(i,j,0) < Real(1.0)) {
                     int ii = i + (fcy(i,j,0,0) >= Real(0.0) ? 1 : -1);
-                    Real fracx = (ccm(ii,j-1,0) || ccm(ii,j,0)) ? std::abs(fcy(i,j,0,0)) : Real(0.0);
-                    fym_0 = (Real(1.0)-fracx)*fym_0 + fracx*fy(ii,j,0,0);
-                    fym_1 = (Real(1.0)-fracx)*fym_1 + fracx*fy(ii,j,0,1);
+                    bool smooth_eta = !flag(ii,j,0).isSingleValued()
+                        || !mlebtensor_strong_coeff_jump(etab(i,j,0), etab(ii,j,0),
+                                                         kapb(i,j,0), kapb(ii,j,0));
+                    if (smooth_eta) {
+                        Real fracx = (ccm(ii,j-1,0) || ccm(ii,j,0)) ? std::abs(fcy(i,j,0,0)) : Real(0.0);
+                        fym_0 = (Real(1.0)-fracx)*fym_0 + fracx*fy(ii,j,0,0);
+                        fym_1 = (Real(1.0)-fracx)*fym_1 + fracx*fy(ii,j,0,1);
+                    }
                 }
 
                 Real fyp_0 = fy(i,j+1,0,0);
                 Real fyp_1 = fy(i,j+1,0,1);
                 if (apy(i,j+1,0) > Real(0.0) && apy(i,j+1,0) < Real(1.0)) {
                     int ii = i + (fcy(i,j+1,0,0) >= Real(0.0) ? 1 : -1);
-                    Real fracx = (ccm(ii,j,0) || ccm(ii,j+1,0)) ? std::abs(fcy(i,j+1,0,0)) : Real(0.0);
-                    fyp_0 = (Real(1.0)-fracx)*fyp_0 + fracx*fy(ii,j+1,0,0);
-                    fyp_1 = (Real(1.0)-fracx)*fyp_1 + fracx*fy(ii,j+1,0,1);
+                    bool smooth_eta = !flag(ii,j+1,0).isSingleValued()
+                        || !mlebtensor_strong_coeff_jump(etab(i,j+1,0), etab(ii,j+1,0),
+                                                         kapb(i,j+1,0), kapb(ii,j+1,0));
+                    if (smooth_eta) {
+                        Real fracx = (ccm(ii,j,0) || ccm(ii,j+1,0)) ? std::abs(fcy(i,j+1,0,0)) : Real(0.0);
+                        fyp_0 = (Real(1.0)-fracx)*fyp_0 + fracx*fy(ii,j+1,0,0);
+                        fyp_1 = (Real(1.0)-fracx)*fyp_1 + fracx*fy(ii,j+1,0,1);
+                    }
                 }
 
                 Real kappa = vol(i,j,0);
@@ -286,7 +306,7 @@ void mlebtensor_cross_terms (Box const& box, Array4<Real> const& Ax,
                 {
                     Real dapx = apx(i+1,j,0)-apx(i,j,0);
                     Real dapy = apy(i,j+1,0)-apy(i,j,0);
-                    Real anorminv = Real(1.0)/std::sqrt(dapx*dapx+dapy*dapy);
+                    Real anorminv = mlebtensor_safe_norminv(std::sqrt(dapx*dapx+dapy*dapy));
                     Real anrmx = -dapx * anorminv;
                     Real anrmy = -dapy * anorminv;
 
@@ -297,8 +317,9 @@ void mlebtensor_cross_terms (Box const& box, Array4<Real> const& Ax,
                         velb_1 = velb(i,j,0,1);
                     }
 
-                    Real dx_eb = amrex::max(Real(0.3), (kappa*kappa-Real(0.25))/(Real(2.)*kappa));
-                    Real dg = dx_eb / amrex::max(std::abs(anrmx),std::abs(anrmy));
+                    Real dx_eb = mlebtensor_limited_dx_eb(kappa);
+                    Real dg = dx_eb / amrex::max(amrex::max(std::abs(anrmx),std::abs(anrmy)),
+                                                 Real(1.0e-12));
                     Real dginv = Real(1.0)/dg;
                     Real gx = bc(i,j,0,0) - dg*anrmx;
                     Real gy = bc(i,j,0,1) - dg*anrmy;

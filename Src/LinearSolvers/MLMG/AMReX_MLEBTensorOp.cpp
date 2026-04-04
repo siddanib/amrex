@@ -41,12 +41,26 @@ MLEBTensorOp::define (const Vector<Geometry>& a_geom,
 
     m_kappa.clear();
     m_kappa.resize(NAMRLevels());
+    m_has_kappa = false;
+    m_has_eb_kappa = false;
+    m_base_b_coeffs.clear();
+    m_base_b_coeffs.resize(NAMRLevels());
     m_eb_kappa.resize(NAMRLevels());
     m_tauflux.resize(NAMRLevels());
     for (int amrlev = 0; amrlev < NAMRLevels(); ++amrlev) {
         m_kappa[amrlev].resize(std::min(kappa_num_mglevs,NMGLevels(amrlev)));
+        m_base_b_coeffs[amrlev].resize(NMGLevels(amrlev));
         m_eb_kappa[amrlev].resize(m_kappa[amrlev].size());
         m_tauflux[amrlev].resize(m_kappa[amrlev].size());
+        for (int mglev = 0; mglev < NMGLevels(amrlev); ++mglev) {
+            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+                m_base_b_coeffs[amrlev][mglev][idim].define
+                    (amrex::convert(m_grids[amrlev][mglev],
+                                    IntVect::TheDimensionVector(idim)),
+                     m_dmap[amrlev][mglev],
+                     AMREX_SPACEDIM, 0, MFInfo(), *m_factory[amrlev][mglev]);
+            }
+        }
         for (int mglev = 0; mglev < m_kappa[amrlev].size(); ++mglev) {
             for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
                 m_kappa[amrlev][mglev][idim].define
@@ -68,6 +82,7 @@ MLEBTensorOp::define (const Vector<Geometry>& a_geom,
                                              *m_factory[amrlev][mglev]);
         }
     }
+    m_base_b_coeffs_valid = false;
 }
 
 void
@@ -90,33 +105,40 @@ MLEBTensorOp::setBulkViscosity (int amrlev, const Array<MultiFab const*,AMREX_SP
         MultiFab::Copy(m_kappa[amrlev][0][idim], *kappa[idim], 0, 0, 1, 0);
     }
     m_has_kappa = true;
+    m_needs_update = true;
 }
 
 void
 MLEBTensorOp::setBulkViscosity (int amrlev, Real kappa)
 {
-    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-        m_kappa[amrlev][0][idim].setVal(kappa);
+    if (kappa != 0.0) {
+        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+            m_kappa[amrlev][0][idim].setVal(kappa);
+        }
+        m_has_kappa = true;
     }
-    m_has_kappa = true;
+    m_needs_update = true;
 }
 
 void
 MLEBTensorOp::setEBShearViscosity (int amrlev, MultiFab const& eta)
 {
     MLEBABecLap::setEBHomogDirichlet(amrlev, eta);
+    m_needs_update = true;
 }
 
 void
 MLEBTensorOp::setEBShearViscosity (int amrlev, Real eta)
 {
     MLEBABecLap::setEBHomogDirichlet(amrlev, eta);
+    m_needs_update = true;
 }
 
 void
 MLEBTensorOp::setEBShearViscosityWithInflow (int amrlev, MultiFab const& eta, MultiFab const& eb_vel)
 {
     MLEBABecLap::setEBDirichlet(amrlev, eb_vel, eta);
+    m_needs_update = true;
 }
 
 void
@@ -124,6 +146,7 @@ MLEBTensorOp::setEBBulkViscosity (int amrlev, MultiFab const& kappa)
 {
     MultiFab::Copy(m_eb_kappa[amrlev][0], kappa, 0, 0, 1, 0);
     m_has_eb_kappa = true;
+    m_needs_update = true;
 }
 
 void
@@ -133,6 +156,7 @@ MLEBTensorOp::setEBBulkViscosity (int amrlev, Real kappa)
         m_eb_kappa[amrlev][0].setVal(kappa);
         m_has_eb_kappa = true;
     }
+    m_needs_update = true;
 }
 
 void
@@ -156,7 +180,7 @@ MLEBTensorOp::prepareForSolve ()
         }
     } else {
         for (int amrlev = 0; amrlev < NAMRLevels(); ++amrlev) {
-            for (auto & mglev : m_kappa[amrlev]) {
+            for (auto& mglev : m_kappa[amrlev]) {
                 for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
                     mglev[idim].setVal(0.0);
                 }
@@ -179,21 +203,55 @@ MLEBTensorOp::prepareForSolve ()
         }
     } else {
         for (int amrlev = 0; amrlev < NAMRLevels(); ++amrlev) {
-            for (auto & mglev : m_eb_kappa[amrlev]) {
+            for (auto& mglev : m_eb_kappa[amrlev]) {
                 mglev.setVal(0.0);
             }
         }
     }
 
-    for (int amrlev = 0; amrlev < NAMRLevels(); ++amrlev) {
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-            int icomp = idim;
-            MultiFab::Xpay(m_b_coeffs[amrlev][0][idim], 4./3.,
-                           m_kappa[amrlev][0][idim], 0, icomp, 1, 0);
+    if (MLEBABecLap::needsUpdate()) {
+        MLEBABecLap::prepareForSolve();
+        for (int amrlev = 0; amrlev < NAMRLevels(); ++amrlev) {
+            for (int mglev = 0; mglev < NMGLevels(amrlev); ++mglev) {
+                for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+                    MultiFab::Copy(m_base_b_coeffs[amrlev][mglev][idim],
+                                   m_b_coeffs[amrlev][mglev][idim],
+                                   0, 0, AMREX_SPACEDIM, 0);
+                }
+            }
+        }
+        m_base_b_coeffs_valid = true;
+    } else {
+        AMREX_ALWAYS_ASSERT(m_base_b_coeffs_valid);
+        for (int amrlev = 0; amrlev < NAMRLevels(); ++amrlev) {
+            for (int mglev = 0; mglev < NMGLevels(amrlev); ++mglev) {
+                for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+                    MultiFab::Copy(m_b_coeffs[amrlev][mglev][idim],
+                                   m_base_b_coeffs[amrlev][mglev][idim],
+                                   0, 0, AMREX_SPACEDIM, 0);
+                }
+            }
         }
     }
 
+    for (int amrlev = 0; amrlev < NAMRLevels(); ++amrlev) {
+        for (int mglev = 0; mglev < m_kappa[amrlev].size(); ++mglev) {
+            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+                int icomp = idim;
+                MultiFab::Xpay(m_b_coeffs[amrlev][mglev][idim], 4./3.,
+                               m_kappa[amrlev][mglev][idim], 0, icomp, 1, 0);
+            }
+        }
+    }
     MLEBABecLap::prepareForSolve();
+
+    m_needs_update = false;
+}
+
+void
+MLEBTensorOp::update ()
+{
+    prepareForSolve();
 }
 
 void

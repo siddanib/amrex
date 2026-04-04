@@ -7,6 +7,38 @@
 namespace amrex {
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+Real mlebtensor_safe_norminv (Real amag) noexcept
+{
+    return Real(1.0) / amrex::max(amag, Real(1.0e-12));
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+Real mlebtensor_limited_dx_eb (Real vfrac) noexcept
+{
+    Real v = amrex::max(vfrac, Real(1.0e-12));
+    Real dx_eb = amrex::max(Real(0.3), (v*v-Real(0.25))/(Real(2.)*v));
+    return amrex::min(dx_eb, Real(0.5));
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+bool mlebtensor_strong_jump (Real a, Real b) noexcept
+{
+    Real aa = amrex::Math::abs(a);
+    Real bb = amrex::Math::abs(b);
+    Real amin = amrex::max(amrex::min(aa, bb), Real(1.0e-12));
+    Real amax = amrex::max(aa, bb);
+    return (amax / amin) > Real(4.0);
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+bool mlebtensor_strong_coeff_jump (Real eta_a, Real eta_b,
+                                   Real kappa_a, Real kappa_b) noexcept
+{
+    return mlebtensor_strong_jump(eta_a, eta_b)
+        || mlebtensor_strong_jump(kappa_a, kappa_b);
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 Real mlebtensor_weight (int d) {
     return (d==2) ? Real(0.5) : ((d==1) ? Real(1.0) : Real(0.0));
 }

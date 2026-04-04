@@ -70,9 +70,7 @@ public:
     [[nodiscard]] bool needsUpdate () const final {
         return (m_needs_update || MLEBABecLap::needsUpdate());
     }
-    void update () final {
-        amrex::Abort("MLEBTensorOp: update TODO");
-    }
+    void update () final;
 
     void prepareForSolve () final;
     [[nodiscard]] bool isSingular (int /*armlev*/) const final { return false; }
@@ -96,12 +94,14 @@ protected:
     bool m_has_kappa = false;
     bool m_has_eb_kappa = false;
     Vector<Vector<Array<MultiFab,AMREX_SPACEDIM> > > m_kappa;
+    Vector<Vector<Array<MultiFab,AMREX_SPACEDIM> > > m_base_b_coeffs;
     Vector<Vector<MultiFab> > m_eb_kappa;
     mutable Vector<Vector<Array<MultiFab,AMREX_SPACEDIM> > > m_tauflux;
 
 private:
 
     bool m_needs_update = true;
+    bool m_base_b_coeffs_valid = false;
 
 public: // for cuda
 
